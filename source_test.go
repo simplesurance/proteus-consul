@@ -2,6 +2,7 @@ package cfgconsul_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/simplesurance/proteus"
 	cfgconsul "github.com/simplesurance/proteus-consul"
@@ -19,8 +20,28 @@ func TestConsulProvider(t *testing.T) {
 
 	params := struct {
 		ConsulURL string
-		TestValue *xtypes.String
-	}{}
+		Server    *xtypes.String          `param:",optional"`
+		Port      *xtypes.Integer[uint16] `param:",optional"`
+		LogLevel  *xtypes.OneOf           `param:",optional"`
+	}{
+		Server: &xtypes.String{
+			UpdateFn: func(s string) {
+				t.Logf("New Server: %s", s)
+			},
+		},
+		Port: &xtypes.Integer[uint16]{
+			UpdateFn: func(v uint16) {
+				t.Logf("Port Number: %d", v)
+			},
+		},
+		LogLevel: &xtypes.OneOf{
+			Choices:      []string{"off", "debug", "info", "error"},
+			DefaultValue: "info",
+			UpdateFn: func(s string) {
+				t.Logf("New Log Level: %s", s)
+			},
+		},
+	}
 
 	testSource := cfgtest.New(types.ParamValues{
 		"": map[string]string{
@@ -28,14 +49,20 @@ func TestConsulProvider(t *testing.T) {
 		},
 	})
 
-	_, err := proteus.MustParse(&params,
+	parsed, err := proteus.MustParse(&params,
 		proteus.WithLogger(cfgtest.LoggerFor(t)),
 		proteus.WithProviders(
 			testSource,
 			cfgconsul.NewFromReference(cfgconsul.ParameterReferences{
 				ConsulURI: cfgconsul.Reference{ParamName: "consulurl"},
-			}, "/proteus-consul")))
+			}, "proteus-consul")))
 	noerr(err)
 
-	t.Logf("%s", params.TestValue.Value())
+	defer parsed.Stop()
+
+	t.Logf("Server: %s", params.Server.Value())
+	t.Logf("Port: %d", params.Port.Value())
+	t.Logf("Log: %s", params.LogLevel.Value())
+
+	time.Sleep(2 * 60 * time.Second)
 }

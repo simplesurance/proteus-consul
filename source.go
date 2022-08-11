@@ -3,9 +3,13 @@
 package cfgconsul
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"path"
+	"strings"
 	"sync"
+	"time"
 
 	consul "github.com/hashicorp/consul/api"
 	"github.com/simplesurance/proteus/sources"
@@ -32,6 +36,10 @@ import (
 // In this case, providing the consul URL provided using command-line flags
 // is used to configure the URL used by the consul provider.
 func NewFromReference(chainedParams ParameterReferences, prefix string) sources.Provider {
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+
 	ret := &provider{
 		prefix: prefix,
 	}
@@ -46,12 +54,15 @@ func NewFromReference(chainedParams ParameterReferences, prefix string) sources.
 type provider struct {
 	consulURLFn func() (*parameters, error)
 	updater     sources.Updater
+	paramNames  sources.Parameters
 	prefix      string
 	client      *consul.Client
+	stopFn      func()
+	stopped     sync.WaitGroup
 
 	protected struct {
 		mutex  sync.Mutex
-		values consulValues
+		waitIx uint64
 	}
 }
 
@@ -72,6 +83,8 @@ func (r *provider) IsCommandLineFlag() bool {
 
 // Stop does nothing.
 func (r *provider) Stop() {
+	r.stopFn()
+	r.stopped.Wait()
 }
 
 // Watch reads parameters from environment variables. Since environment
@@ -81,7 +94,10 @@ func (r *provider) Watch(
 	paramIDs sources.Parameters,
 	updater sources.Updater,
 ) (initial types.ParamValues, err error) {
+	ctx := context.Background()
+
 	r.updater = updater
+	r.paramNames = paramIDs
 
 	params, err := r.consulURLFn()
 	if err != nil {
@@ -100,81 +116,100 @@ func (r *provider) Watch(
 
 	r.client = client
 
-	violations := types.ErrViolations{}
-
-	ret := types.ParamValues{}
-	for setName, set := range paramIDs {
-		ret[setName] = map[string]string{}
-		for paramName := range set {
-			val, err := r.get(setName, paramName)
-			if err != nil {
-				violations = append(violations, types.Violation{
-					SetName:   setName,
-					ParamName: paramName,
-					Message:   err.Error(),
-				})
-				continue
-			}
-
-			if val != nil {
-				ret[setName][paramName] = *val
-			}
-		}
-	}
-
-	if len(violations) > 0 {
-		return nil, violations
-	}
-
-	return ret, nil
-}
-
-func (r *provider) get(setName, paramName string) (*string, error) {
-	kv := r.client.KV()
-
-	// TODO: retries
-
-	var waitIndex uint64
-	if set, ok := r.protected.values[setName]; ok {
-		if param, ok := set[paramName]; ok {
-			waitIndex = param.lastIndex
-		}
-	}
-
-	consulPath := path.Join(r.prefix, setName, paramName)
-	kvPair, meta, err := kv.Get(consulPath, &consul.QueryOptions{
-		WaitIndex: waitIndex,
-	})
+	ret, err := r.list(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if kvPair == nil {
-		return nil, nil
-	}
+	runnerCtx, runnerCancel := context.WithCancel(context.Background())
+	r.stopFn = runnerCancel
 
-	val := string(kvPair.Value)
+	r.stopped.Add(1)
+	go r.updateWorker(runnerCtx)
 
-	r.set(setName, paramName, val, meta.LastIndex)
-
-	return &val, nil
+	return ret, nil
 }
 
-func (r *provider) set(setName, paramName, value string, waitIndex uint64) {
-	if r.protected.values == nil {
-		r.protected.values = consulValues{}
+func (r *provider) updateWorker(ctx context.Context) {
+	defer r.stopped.Done()
+
+	for ctx.Err() == nil {
+		ret, err := r.list(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				r.updater.Log("update worker stopped")
+				continue
+			}
+
+			r.updater.Log("error getting updates from consul: " + err.Error())
+			time.Sleep(time.Second)
+			continue
+		}
+
+		r.updater.Update(ret)
+	}
+}
+
+func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
+	kv := r.client.KV()
+
+	opts := &consul.QueryOptions{
+		WaitIndex: r.protected.waitIx,
+		WaitTime:  time.Minute,
 	}
 
-	set, ok := r.protected.values[setName]
-	if !ok {
-		set = map[string]consulValue{}
-		r.protected.values[setName] = set
+	// TODO: retries
+	kvPairs, meta, err := kv.List(r.prefix, opts.WithContext(ctx))
+	if err != nil {
+		return nil, err
 	}
 
-	set[paramName] = consulValue{
-		value:     value,
-		lastIndex: waitIndex,
+	if meta.LastIndex < r.protected.waitIx {
+		// according to consul api documentation, the wait index is usually
+		// a monotonically increasing number; it might decrease, and in this
+		// case we should make the next calls from wait index 0.
+		r.protected.waitIx = 0
 	}
+
+	r.protected.waitIx = meta.LastIndex
+
+	ret := types.ParamValues{}
+	for _, pair := range kvPairs {
+		k := strings.TrimPrefix(pair.Key, r.prefix)
+
+		if k == "" {
+			continue
+		}
+
+		keySplitted := strings.Split(k, "/")
+		if len(keySplitted) > 2 {
+			r.updater.Log("Ignoring " + pair.Key)
+			continue
+		}
+
+		setName, paramName := "", keySplitted[0]
+		if len(keySplitted) == 2 {
+			setName, paramName = keySplitted[0], keySplitted[1]
+		}
+
+		if _, found := r.paramNames.Get(setName, paramName); !found {
+			r.updater.Log(fmt.Sprintf("Key %q does not match to any application parameter", pair.Key))
+			continue
+		}
+
+		set, ok := ret[setName]
+		if !ok {
+			set = map[string]string{}
+			ret[setName] = set
+		}
+
+		set[paramName] = string(pair.Value)
+	}
+
+	j, _ := json.MarshalIndent(ret, "", "  ")
+	r.updater.Log(string(j))
+
+	return ret, nil
 }
 
 func (r *provider) parametersFromReference(

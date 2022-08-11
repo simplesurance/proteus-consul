@@ -1,19 +1,19 @@
 # github.com/armon/go-metrics v0.3.10
 ## explicit; go 1.12
 github.com/armon/go-metrics
-# github.com/fatih/color v1.9.0
+# github.com/fatih/color v1.13.0
 ## explicit; go 1.13
 github.com/fatih/color
 # github.com/hashicorp/consul/api v1.14.0
 ## explicit; go 1.12
 github.com/hashicorp/consul/api
-# github.com/hashicorp/go-cleanhttp v0.5.1
-## explicit
+# github.com/hashicorp/go-cleanhttp v0.5.2
+## explicit; go 1.13
 github.com/hashicorp/go-cleanhttp
-# github.com/hashicorp/go-hclog v0.14.1
+# github.com/hashicorp/go-hclog v1.0.0
 ## explicit; go 1.13
 github.com/hashicorp/go-hclog
-# github.com/hashicorp/go-immutable-radix v1.3.0
+# github.com/hashicorp/go-immutable-radix v1.3.1
 ## explicit
 github.com/hashicorp/go-immutable-radix
 # github.com/hashicorp/go-rootcerts v1.0.2
@@ -25,23 +25,37 @@ github.com/hashicorp/golang-lru/simplelru
 # github.com/hashicorp/serf v0.9.7
 ## explicit; go 1.12
 github.com/hashicorp/serf/coordinate
-# github.com/mattn/go-colorable v0.1.6
+# github.com/mattn/go-colorable v0.1.12
 ## explicit; go 1.13
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.12
+# github.com/mattn/go-isatty v0.0.14
 ## explicit; go 1.12
 github.com/mattn/go-isatty
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
 github.com/mitchellh/go-homedir
-# github.com/mitchellh/mapstructure v1.4.1
+# github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
-# github.com/simplesurance/proteus v0.0.1
+# github.com/simplesurance/proteus v0.0.2-pre8
 ## explicit; go 1.18
+github.com/simplesurance/proteus
+github.com/simplesurance/proteus/internal/consts
+github.com/simplesurance/proteus/internal/slices
 github.com/simplesurance/proteus/sources
+github.com/simplesurance/proteus/sources/cfgenv
+github.com/simplesurance/proteus/sources/cfgflags
+github.com/simplesurance/proteus/sources/cfgtest
 github.com/simplesurance/proteus/types
-# golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
+github.com/simplesurance/proteus/xtypes
+# github.com/stretchr/objx v0.4.0
+## explicit; go 1.12
+# golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
+## explicit; go 1.18
+golang.org/x/exp/constraints
+# golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
+## explicit; go 1.17
+# golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
