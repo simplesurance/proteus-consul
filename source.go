@@ -16,6 +16,11 @@ import (
 	"github.com/simplesurance/proteus/types"
 )
 
+const (
+	reconnectDelay   = 5 * time.Second
+	slowPoolInterval = time.Minute
+)
+
 // NewFromReference creates a new Consul KV Provider for proteus
 // that is itself configured by another provider.
 //
@@ -137,17 +142,18 @@ func (r *provider) updateWorker(ctx context.Context) {
 		ret, err := r.list(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
-				r.updater.Log("update worker stopped")
 				continue
 			}
 
 			r.updater.Log("error getting updates from consul: " + err.Error())
-			time.Sleep(time.Second)
+			time.Sleep(reconnectDelay)
 			continue
 		}
 
 		r.updater.Update(ret)
 	}
+
+	r.updater.Log("update worker stopped")
 }
 
 func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
@@ -155,7 +161,7 @@ func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
 
 	opts := &consul.QueryOptions{
 		WaitIndex: r.protected.waitIx,
-		WaitTime:  time.Minute,
+		WaitTime:  slowPoolInterval,
 	}
 
 	// TODO: retries
