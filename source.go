@@ -3,6 +3,7 @@
 package cfgconsul
 
 import (
+	"fmt"
 	"path"
 	"sync"
 
@@ -11,8 +12,8 @@ import (
 	"github.com/simplesurance/proteus/types"
 )
 
-// New creates a new Consul KV configuration provider for proteus
-// with configuration provided by another provider.
+// NewFromReference creates a new Consul KV Provider for proteus
+// that is itself configured by another provider.
 //
 // Example:
 //
@@ -23,16 +24,19 @@ import (
 //
 //	proteus.MustParse(&params, proteus.WithProviders(
 //		cfgflags.New(),
-//		cfgconsul.New(ParameterReferences{
+//		cfgconsul.NewFromReference(ParameterReferences{
 //			ConsulURI: Reference{"", "theconsulurl"},
 //		}),
 //	))
-func New(chainedParams ParameterReferences, prefix string) sources.Provider {
+//
+// In this case, providing the consul URL provided using command-line flags
+// is used to configure the URL used by the consul provider.
+func NewFromReference(chainedParams ParameterReferences, prefix string) sources.Provider {
 	ret := &provider{
 		prefix: prefix,
 	}
 
-	ret.consulURLFn = ret.parametersFromChain(chainedParams)
+	ret.consulURLFn = ret.parametersFromReference(chainedParams)
 
 	return ret
 }
@@ -77,10 +81,15 @@ func (r *provider) Watch(
 	paramIDs sources.Parameters,
 	updater sources.Updater,
 ) (initial types.ParamValues, err error) {
+	r.updater = updater
+
 	params, err := r.consulURLFn()
 	if err != nil {
 		return nil, err
 	}
+
+	updater.Log(fmt.Sprintf("Consul URL: %s KV Path: %s",
+		params.consulURI, r.prefix))
 
 	client, err := consul.NewClient(&consul.Config{
 		Address: params.consulURI,
@@ -91,12 +100,19 @@ func (r *provider) Watch(
 
 	r.client = client
 
+	violations := types.ErrViolations{}
+
 	ret := types.ParamValues{}
 	for setName, set := range paramIDs {
 		ret[setName] = map[string]string{}
 		for paramName := range set {
 			val, err := r.get(setName, paramName)
 			if err != nil {
+				violations = append(violations, types.Violation{
+					SetName:   setName,
+					ParamName: paramName,
+					Message:   err.Error(),
+				})
 				continue
 			}
 
@@ -104,6 +120,10 @@ func (r *provider) Watch(
 				ret[setName][paramName] = *val
 			}
 		}
+	}
+
+	if len(violations) > 0 {
+		return nil, violations
 	}
 
 	return ret, nil
@@ -129,6 +149,10 @@ func (r *provider) get(setName, paramName string) (*string, error) {
 		return nil, err
 	}
 
+	if kvPair == nil {
+		return nil, nil
+	}
+
 	val := string(kvPair.Value)
 
 	r.set(setName, paramName, val, meta.LastIndex)
@@ -137,6 +161,10 @@ func (r *provider) get(setName, paramName string) (*string, error) {
 }
 
 func (r *provider) set(setName, paramName, value string, waitIndex uint64) {
+	if r.protected.values == nil {
+		r.protected.values = consulValues{}
+	}
+
 	set, ok := r.protected.values[setName]
 	if !ok {
 		set = map[string]consulValue{}
@@ -149,7 +177,7 @@ func (r *provider) set(setName, paramName, value string, waitIndex uint64) {
 	}
 }
 
-func (r *provider) parametersFromChain(
+func (r *provider) parametersFromReference(
 	chainedParams ParameterReferences,
 ) func() (*parameters, error) {
 	return func() (*parameters, error) {
@@ -158,8 +186,18 @@ func (r *provider) parametersFromChain(
 			return nil, err
 		}
 
+		if consulURI == nil {
+			p := chainedParams.ConsulURI.ParamName
+			if chainedParams.ConsulURI.SetName != "" {
+				p = chainedParams.ConsulURI.SetName + "." + p
+			}
+
+			return nil, fmt.Errorf("error initializing Consul KV provider: Consul URL is expected to be provided on parameter %q, but it wasn't",
+				p)
+		}
+
 		return &parameters{
-			consulURI: consulURI,
+			consulURI: *consulURI,
 		}, nil
 	}
 }
