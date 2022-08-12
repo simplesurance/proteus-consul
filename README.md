@@ -1,5 +1,4 @@
 # Proteus Consul Key-Value Provider
-![Coverage](https://img.shields.io/badge/Coverage-58.2%25-yellow)
 [![Go Report Card](https://goreportcard.com/badge/github.com/simplesurance/proteus-consul)](https://goreportcard.com/report/github.com/simplesurance/proteus-consul)
 
 ## About
