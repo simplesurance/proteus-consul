@@ -71,13 +71,6 @@ type provider struct {
 	}
 }
 
-type consulValues map[string]map[string]consulValue
-
-type consulValue struct {
-	value     string
-	lastIndex uint64 // used for blocking GET on consul (watches)
-}
-
 var _ sources.Provider = &provider{}
 
 // IsCommandLineFlag returns true, to allow tests to handle special flags that
