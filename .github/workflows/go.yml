@@ -20,7 +20,7 @@ jobs:
     - uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go }}
-    - run: "go test --race ./..."
+    - run: "go test --tag unit --race ./..."
     - run: "go vet ./..."
     - uses: dominikh/staticcheck-action@v1.2.0
       with:

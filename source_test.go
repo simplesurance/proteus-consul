@@ -1,3 +1,5 @@
+//go:build integration
+
 package cfgconsul_test
 
 import (
