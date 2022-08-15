@@ -3,6 +3,7 @@ package proteus
 import (
 	"fmt"
 
+	"github.com/simplesurance/proteus/plog"
 	"github.com/simplesurance/proteus/sources"
 	"github.com/simplesurance/proteus/types"
 )
@@ -30,8 +31,9 @@ func (u *updater) Update(v types.ParamValues) {
 	u.update(v, true)
 }
 
-func (u *updater) Log(msg string) {
-	u.parsed.settings.loggerFn(u.providerName+": "+msg, 2)
+func (u *updater) Log(entry plog.Entry) {
+	entry.Message = u.providerName + ": " + entry.Message
+	u.parsed.settings.loggerFn(entry)
 }
 
 func (u *updater) Peek(setName, paramName string) (*string, error) {
@@ -71,9 +73,9 @@ func (u *updater) validateValues(v types.ParamValues) {
 		for paramName, value := range set {
 			err := u.parsed.validValue(setName, paramName, &value)
 			if err != nil {
-				u.parsed.settings.loggerFn(fmt.Sprintf(
+				u.parsed.settings.loggerFn.E(fmt.Sprintf(
 					"provider %q update: parameter %s.%s: %v",
-					u.providerName, setName, paramName, err), 2)
+					u.providerName, setName, paramName, err))
 			}
 		}
 	}

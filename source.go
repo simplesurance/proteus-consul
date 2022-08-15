@@ -12,6 +12,7 @@ import (
 	"time"
 
 	consul "github.com/hashicorp/consul/api"
+	"github.com/simplesurance/proteus/plog"
 	"github.com/simplesurance/proteus/sources"
 	"github.com/simplesurance/proteus/types"
 )
@@ -59,6 +60,7 @@ func NewFromReference(chainedParams ParameterReferences, prefix string) sources.
 type provider struct {
 	consulURLFn func() (*parameters, error)
 	updater     sources.Updater
+	logger      plog.Logger
 	paramNames  sources.Parameters
 	prefix      string
 	client      *consul.Client
@@ -94,6 +96,7 @@ func (r *provider) Watch(
 ) (initial types.ParamValues, err error) {
 	ctx := context.Background()
 
+	r.logger = updater.Log
 	r.updater = updater
 	r.paramNames = paramIDs
 
@@ -102,7 +105,8 @@ func (r *provider) Watch(
 		return nil, err
 	}
 
-	updater.Log(fmt.Sprintf("Consul URL: %s KV Path: %s",
+	r.logger.D(fmt.Sprintf(
+		"Consul URL: %s KV Path: %s",
 		params.consulURI, r.prefix))
 
 	client, err := consul.NewClient(&consul.Config{
@@ -138,7 +142,7 @@ func (r *provider) updateWorker(ctx context.Context) {
 				continue
 			}
 
-			r.updater.Log("error getting updates from consul: " + err.Error())
+			r.logger.E("error getting updates from consul: " + err.Error())
 			time.Sleep(reconnectDelay)
 			continue
 		}
@@ -146,7 +150,7 @@ func (r *provider) updateWorker(ctx context.Context) {
 		r.updater.Update(ret)
 	}
 
-	r.updater.Log("update worker stopped")
+	r.logger.I("update worker stopped")
 }
 
 func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
@@ -182,7 +186,7 @@ func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
 
 		keySplitted := strings.Split(k, "/")
 		if len(keySplitted) > 2 {
-			r.updater.Log("Ignoring " + pair.Key)
+			r.logger.D("Ignoring " + pair.Key)
 			continue
 		}
 
@@ -192,7 +196,9 @@ func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
 		}
 
 		if _, found := r.paramNames.Get(setName, paramName); !found {
-			r.updater.Log(fmt.Sprintf("Key %q does not match to any application parameter", pair.Key))
+			r.logger.I(fmt.Sprintf(
+				"Ignoring key %q: does not match to any application parameter",
+				pair.Key))
 			continue
 		}
 
@@ -206,7 +212,7 @@ func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
 	}
 
 	j, _ := json.MarshalIndent(ret, "", "  ")
-	r.updater.Log(string(j))
+	r.logger.D(string(j))
 
 	return ret, nil
 }

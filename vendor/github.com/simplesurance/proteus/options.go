@@ -3,15 +3,16 @@ package proteus
 import (
 	"io"
 
+	"github.com/simplesurance/proteus/plog"
 	"github.com/simplesurance/proteus/sources"
 )
 
-// Option allows specifying options when creating a configuration parser.
+// Option specifes options when creating a configuration parser.
 type Option func(*settings)
 
 type settings struct {
 	providers   []sources.Provider
-	loggerFn    Logger
+	loggerFn    plog.Logger
 	onelineDesc string
 
 	// auto-usage (aka --help)
@@ -26,13 +27,18 @@ func (s *settings) apply(options ...Option) {
 }
 
 // WithProviders specifies from where the configuration should be read.
+// If not specified, proteus will use the equivalent to:
+//
+//	WithEnv(cfgflags.New(), cfgenv.New("CFG"))
+//
+// Providing this option override any previous configuration for providers.
 func WithProviders(s ...sources.Provider) Option {
 	return func(p *settings) {
 		p.providers = s
 	}
 }
 
-// WithShortDescription allows specifying a short one-line description for
+// WithShortDescription species a short one-line description for
 // the application. Is used when generating help information.
 func WithShortDescription(oneline string) Option {
 	return func(p *settings) {
@@ -51,15 +57,11 @@ func WithAutoUsage(writer io.Writer, exitFn func()) Option {
 	}
 }
 
-// WithLogger allows providing a custom logger. By default logs are suppressed.
-func WithLogger(l Logger) Option {
+// WithLogger provides a custom logger. By default logs are suppressed.
+//
+// Warning: the "Logger" interface is expected to change in the stable release.
+func WithLogger(l plog.Logger) Option {
 	return func(p *settings) {
 		p.loggerFn = l
 	}
 }
-
-// Logger is the function used to output human-readable diagnostics
-// information. Depth can optionally be used to determine the real caller of
-// the log function, by skipping the correct number of intermediate frames
-// in the stacktrace.
-type Logger func(msg string, depth int)

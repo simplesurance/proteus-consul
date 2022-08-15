@@ -8,6 +8,7 @@ import (
 
 	"github.com/simplesurance/proteus"
 	cfgconsul "github.com/simplesurance/proteus-consul"
+	"github.com/simplesurance/proteus/plog"
 	"github.com/simplesurance/proteus/sources/cfgtest"
 	"github.com/simplesurance/proteus/types"
 	"github.com/simplesurance/proteus/xtypes"
@@ -52,7 +53,7 @@ func TestConsulProvider(t *testing.T) {
 	})
 
 	parsed, err := proteus.MustParse(&params,
-		proteus.WithLogger(cfgtest.LoggerFor(t)),
+		proteus.WithLogger(plog.TestLogger(t)),
 		proteus.WithProviders(
 			testSource,
 			cfgconsul.NewFromReference(cfgconsul.ParameterReferences{

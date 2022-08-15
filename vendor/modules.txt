@@ -37,11 +37,12 @@ github.com/mitchellh/go-homedir
 # github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
-# github.com/simplesurance/proteus v0.0.2-pre8
+# github.com/simplesurance/proteus v0.0.2
 ## explicit; go 1.18
 github.com/simplesurance/proteus
 github.com/simplesurance/proteus/internal/consts
 github.com/simplesurance/proteus/internal/slices
+github.com/simplesurance/proteus/plog
 github.com/simplesurance/proteus/sources
 github.com/simplesurance/proteus/sources/cfgenv
 github.com/simplesurance/proteus/sources/cfgflags

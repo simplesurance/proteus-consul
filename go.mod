@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/hashicorp/consul/api v1.14.0
-	github.com/simplesurance/proteus v0.0.2-pre8
+	github.com/simplesurance/proteus v0.0.2
 )
 
 require (

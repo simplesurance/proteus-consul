@@ -1,7 +1,6 @@
 # Proteus
-![Coverage](https://img.shields.io/badge/Coverage-58.2%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-58.4%25-yellow)
 [![Go Report Card](https://goreportcard.com/badge/github.com/simplesurance/proteus)](https://goreportcard.com/report/github.com/simplesurance/proteus)
-[![Github tag](https://badgen.net/github/tag/simplesurance/proteus)](https://github.com/simplesurance/proteus/tags/)
 
 ## About
 
@@ -13,6 +12,12 @@ getting updates when the configuration changes.
 
 This project is in pre-release stage and backwards compatibility is not
 guaranteed.
+
+## How to Get
+
+```bash
+go get github.com/simplesurance/proteus@v0.0.2
+```
 
 ## How to Use
 
@@ -265,3 +270,10 @@ go run main.go --help
 #   Name of the database server
 ```
 
+## Supported Providers
+
+- [cfgenv](sources/cfgenv/): For environ variables
+- [cfgflags](sources/cfgflags/): For command-line flags
+- [cfgtest](sources/cfgtest/): For tests
+- [cfgconsul](https://github.com/simplesurance/proteus-consul): For HashiCorp
+  Consul

@@ -56,15 +56,14 @@ func (r *envVarProvider) Watch(
 	paramIDs sources.Parameters,
 	updater sources.Updater,
 ) (initial types.ParamValues, _ error) {
-	return parse(updater.Log, r.prefix+"__", paramIDs)
+	return parse(r.prefix+"__", paramIDs)
 }
 
 func parse(
-	logger func(string),
 	prefix string,
 	paramIDs sources.Parameters,
 ) (types.ParamValues, error) {
-	env := readEnvVarsWithPrefix(logger, prefix)
+	env := readEnvVarsWithPrefix(prefix)
 
 	ret := types.ParamValues{}
 	for setName, set := range paramIDs {
@@ -103,7 +102,7 @@ func parse(
 	return ret, nil
 }
 
-func readEnvVarsWithPrefix(logger logger, prefix string) map[string]string {
+func readEnvVarsWithPrefix(prefix string) map[string]string {
 	envSlice := os.Environ()
 
 	ret := map[string]string{}
@@ -131,5 +130,3 @@ func envVarName(setName, valueName, prefix string) string {
 
 	return strings.ToUpper(strings.ReplaceAll(ret, "-", "_"))
 }
-
-type logger func(string)

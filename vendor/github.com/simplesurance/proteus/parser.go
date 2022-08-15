@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/simplesurance/proteus/internal/consts"
+	"github.com/simplesurance/proteus/plog"
 	"github.com/simplesurance/proteus/sources"
 	"github.com/simplesurance/proteus/sources/cfgenv"
 	"github.com/simplesurance/proteus/sources/cfgflags"
@@ -133,7 +134,7 @@ func MustParse(config any, options ...Option) (*Parsed, error) {
 			cfgflags.New(),
 			cfgenv.New("CFG"),
 		},
-		loggerFn:        func(msg string, depth int) {}, // nop logger
+		loggerFn:        func(log plog.Entry) {}, // nop logger
 		autoUsageExitFn: func() { os.Exit(0) },
 		autoUsageWriter: os.Stdout,
 	}

@@ -31,12 +31,12 @@ type Parsed struct {
 // usage text, it also outputs the validation errors with the supplied
 // parameters. It does not terminate the application.
 func (p *Parsed) ErrUsage(w io.Writer, err error) {
+	// TODO: the output here can be a lot more insightful
 	fmt.Fprintf(w, "%s: %s\n", binaryName(), err.Error())
-
 	p.Usage(w)
 }
 
-// Usage print usage information to the provider writer.
+// Usage print usage information to the provided writer.
 func (p *Parsed) Usage(w io.Writer) {
 	setKeys := make([]string, 0, len(p.inferedConfig))
 	for k := range p.inferedConfig {
@@ -158,6 +158,8 @@ func (p *Parsed) Valid() error {
 	return p.valid()
 }
 
+// Stop release resources being used. Proteus itself does not use any
+// resource that need to be released, but some providers might.
 func (p *Parsed) Stop() {
 	for _, p := range p.settings.providers {
 		p.Stop()
@@ -278,16 +280,19 @@ func (p *Parsed) validValue(setName, paramName string, value *string) error {
 // Caller must hold the mutex.
 func (p *Parsed) refresh(force bool) {
 	if err := p.valid(); err != nil {
-		p.settings.loggerFn(fmt.Sprintf(
+		p.settings.loggerFn.E(fmt.Sprintf(
 			"Refusing to update values because configuration is invalid: %v",
-			err.Error()), 1)
+			err.Error()))
 		return
 	}
 
 	for setName, set := range p.inferedConfig {
 		for paramName, paramConfig := range set.fields {
 			if !paramConfig.isXtype && !force {
-				p.settings.loggerFn(fmt.Sprintf("Not updating %s.%s (xtype: %t, force: %t)", setName, paramName, paramConfig.isXtype, force), 1)
+				p.settings.loggerFn.D(fmt.Sprintf(
+					"Not updating %s.%s (xtype: %t, force: %t)",
+					setName, paramName, paramConfig.isXtype, force))
+
 				continue
 			}
 
@@ -305,7 +310,9 @@ func (p *Parsed) refresh(force bool) {
 
 			err := paramConfig.setValueFn(value)
 			if err != nil {
-				p.settings.loggerFn(fmt.Sprintf("error updating %s.%s: %v", setName, paramName, err), 1)
+				p.settings.loggerFn.E(fmt.Sprintf(
+					"error updating %s.%s: %v",
+					setName, paramName, err))
 			}
 		}
 	}
