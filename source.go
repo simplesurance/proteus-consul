@@ -186,7 +186,7 @@ func (r *provider) list(ctx context.Context) (types.ParamValues, error) {
 
 		keySplitted := strings.Split(k, "/")
 		if len(keySplitted) > 2 {
-			r.logger.D("Ignoring " + pair.Key)
+			r.logger.D(fmt.Sprintf("Ignoring %q (k=%q prefix=%q)", pair.Key, k, r.prefix))
 			continue
 		}
 
