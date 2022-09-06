@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/hashicorp/consul/api v1.14.0
-	github.com/simplesurance/proteus v0.0.2
+	github.com/simplesurance/proteus v0.0.4-0.20220829094916-29b315e10e10
 )
 
 require (
@@ -21,6 +21,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/stretchr/objx v0.4.0 // indirect
+	github.com/stretchr/testify v1.7.1 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
 	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
